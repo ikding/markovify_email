@@ -22,5 +22,11 @@ if __name__ == '__main__':
     #     print(text_model.make_sentence())
 
     # Print three randomly-generated sentences of no more than 140 characters
-    for i in range(10):
-        print(text_model.make_short_sentence(140))
+    while True:
+        quit = input('Press any key to output sentences, or q to exit: ')
+        print('\n')
+        if quit == 'q':
+            break
+        for i in range(10):
+            print(text_model.make_short_sentence(140))
+        print('\n')
