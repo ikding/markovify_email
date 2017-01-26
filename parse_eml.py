@@ -67,7 +67,7 @@ if __name__ == '__main__':
             # Construct the folder and file path.
             # We'll save output as .md file
             folder_path = os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), 'email_corpus')
+                os.path.dirname(os.path.realpath(__file__)), 'corpus')
 
             if not os.path.isdir(folder_path):
                 os.makedirs(folder_path)
