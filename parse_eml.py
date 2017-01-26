@@ -25,7 +25,8 @@ def make_filename(s):
         input: '"O\'Donnell, Kathryn" <Kathryn.O\'Donnell@capitalone.com>'
         output: ODonnellKathryn
 
-    Source: http://stackoverflow.com/questions/7406102/create-sane-safe-filename-from-any-unsafe-string
+    Reference:
+        http://stackoverflow.com/questions/7406102/create-sane-safe-filename-from-any-unsafe-string
 
     Args:
         s (str): input string
@@ -35,6 +36,44 @@ def make_filename(s):
     """
     name = s.split(' <')[0]
     return "".join([c for c in name if re.match(r'\w', c)])
+
+
+def get_text_from_msg(msg):
+    """Recursively get text from an email message.
+
+    Args:
+        msg (email.message.Message): an email message file read from
+            email.message_from_file(file_path)
+
+    Returns:
+        Plain text from email (removing all attachments).
+    """
+    if not isinstance(msg, email.message.Message):
+        raise TypeError('Input msg should be type email.message.Message, '
+                        'but type was {}'
+                        .format(type(msg)))
+
+    if not msg.is_multipart():
+        try:
+            text = msg.get_payload(decode=True).decode('utf-8')
+        except UnicodeDecodeError:
+            text = ''
+
+        # Get only the main message, not the quotes from other
+        # people's email.
+        text = text.split('\nFrom: ')[0]
+        # Additional regex splitting to match patterns like:
+        # On Dec 2, 2016
+        p = re.compile(r'\nOn\s(:?Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s\d{1,2}\,\s(199[0-9]|20[0-9]{2})')
+        text = p.split(text)[0]
+        # Additional regex splitting to match patterns like:
+        # On 2/11/16,
+        p = re.compile(r'\nOn\s\d{1,2}\/\d{1,2}\/\d{1,2},\s')
+        text = p.split(text)[0]
+        return text
+    else:
+        for pl in msg.get_payload():
+            return get_text_from_msg(pl)
 
 
 if __name__ == '__main__':
@@ -63,44 +102,17 @@ if __name__ == '__main__':
 
             # Get the lower case author. We'll use this as the folder name.
             author = make_filename(msg['From'])
+            text = get_text_from_msg(msg)
 
-            # Construct the folder and file path.
-            # We'll save output as .md file
+            # Construct the output folder and file path.
+            # We'll save output as .txt file, one text file per sender.
             folder_path = os.path.join(
                 os.path.dirname(os.path.realpath(__file__)), 'corpus')
 
             if not os.path.isdir(folder_path):
                 os.makedirs(folder_path)
+
             file_path = os.path.join(folder_path, author + '.txt')
-
-            # Read the raw text (non-HTML version) of the email.
-            # Raw text payload
-            if isinstance(msg.get_payload(), str):
-                text = msg.get_payload()
-
-            # No attachments
-            elif msg.get_payload(1).get_content_maintype() == 'text':
-                text = (msg
-                        .get_payload(0)
-                        .get_payload(decode=True)
-                        .decode('utf-8'))
-
-            # Has attachments: need to go another layer deeper in payload
-            else:
-                text = (msg
-                        .get_payload(0)
-                        .get_payload(0)
-                        .get_payload(decode=True)
-                        .decode('utf-8'))
-
-            # Get only the main message, not the quotes from other
-            # people's email.
-            text = text.split('\nFrom: ')[0]
-
-            # Additional regex splitting to match patterns like:
-            # On Dec 2, 2016
-            p = re.compile(r'\nOn\s(:?Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s\d{1,2}\,\s(199[0-9]|20[0-9]{2})')
-            text = p.split(text)[0]
 
             # Append the lines into the file (specific to the author)
             with open(file_path, 'a') as output_file:
